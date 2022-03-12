@@ -1,0 +1,124 @@
+
+## 20 spectra collected from each side of the battery, there are 10 seconds time interval between each spectrum collection. 
+The spectra quality is low, so the result is not conclusive. 
+The resolution and signal to noise ratio of Raman may be decreased by switch to a different laser source on my side. 
+But, we still need to find a way to prevent the battery electrolyte leaking or evaporatin to get better result. 
+
+```{r package loading, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(baseline)
+library(plotly)
+```
+
+```{r}
+
+pos<-read.delim("E:\\Tufts\\data\\table1.txt",
+                head=F,col.names = c("wtno",c(1:20)))
+
+
+posm<-pos %>% 
+  select(-1) %>% 
+  as.matrix()%>% 
+  t() %>% 
+  baseline.modpolyfit(degree = 1, tol = 0.001, rep = 100)
+```
+
+
+# Plot the full spectra of all spectra collected at the positive side of the battery
+```{r}
+posm$corrected %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  cbind(pos$wtno)%>% 
+  pivot_longer(cols=starts_with("V"),names_to = c("obs")) %>%
+  mutate(obs=(str_replace(obs,"V",""))) %>% 
+  set_names(c("wtno","obs","value"))%>% 
+  ggplot()+
+  geom_line(aes(wtno,value,group=obs,color=obs))+
+#  xlim(700,900)+
+  ylim(0,25) 
+ 
+wtno<-as.numeric(pos$wtno) 
+```
+
+# plot the ratio of peak around (803 cm-1 to 815 cm-1) to peak around (864 cm-1 to 875-1) for the spectra collected from the positive side of the battery
+```{r}
+
+posw<-posm$corrected %>% 
+  as.data.frame(row.names=c(1:20))
+posw %>% 
+  set_names(pos$wtno) %>% 
+  mutate(sp1=rowSums(posw[,which((wtno>803)&(wtno<815))]),
+         sp2=rowSums(posw[,which((wtno>864)&(wtno<875))]),
+         ratio=sp1/sp2,obs=c(1:20)) %>% 
+  select(ratio,obs) %>% 
+  ggplot()+
+  geom_line(aes(obs,ratio))
+# %>% 
+
+
+# pos %>% 
+#   ggplot(aes(wtno,value))+
+#   geom_line(aes(group=obs,color=obs))+
+#   xlim(780,900)+
+#   ylim(950,975)
+  
+neg<-read.delim("E:\\Tufts\\data\\table3.txt",
+                head=F,col.names = c("wtno",c(1:20)))
+negm<-neg %>% 
+  select(-1) %>% 
+  as.matrix()%>% 
+  t() %>% 
+  baseline.modpolyfit(degree = 1, tol = 0.001, rep = 100)
+```
+
+
+# Plot the full spectra of all spectra collected at the negtive side of the battery
+```{r}
+negm$corrected %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  cbind(pos$wtno)%>% 
+  pivot_longer(cols=starts_with("V"),names_to = c("obs")) %>%
+  mutate(obs=(str_replace(obs,"V",""))) %>% 
+  set_names(c("wtno","obs","value"))%>% 
+#  filter(obs %in% c("1","5","10","15","20")) %>% 
+  ggplot()+
+  geom_line(aes(wtno,value,group=obs,color=obs))+
+#  xlim(700,900)+
+  ylim(0,80) 
+```
+
+# Plot the spectra at 700cm-1 to 900cm-1 region of all spectra collected at the negtive side of the battery
+```{r}
+negm$corrected %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  cbind(pos$wtno)%>% 
+  pivot_longer(cols=starts_with("V"),names_to = c("obs")) %>%
+  mutate(obs=(str_replace(obs,"V",""))) %>% 
+  set_names(c("wtno","obs","value"))%>% 
+#  filter(obs %in% c("1","5","10","15","20")) %>% 
+  ggplot()+
+  geom_line(aes(wtno,value,group=obs,color=obs))+
+  xlim(700,900)+
+  ylim(0,80) 
+```
+
+
+# plot the ratio of peak around (803 cm-1 to 815 cm-1) to peak around (864 cm-1 to 875-1) for the spectra collected from the negtive side of the battery
+```{r}
+negw<-negm$corrected %>% 
+  as.data.frame(row.names=c(1:20))
+negw %>% 
+  set_names(pos$wtno) %>% 
+  mutate(sp1=rowSums(negw[,which((wtno>803)&(wtno<815))]),
+         sp2=rowSums(negw[,which((wtno>864)&(wtno<875))]),
+         ratio=sp1/sp2,obs=c(1:20)) %>% 
+  select(ratio,obs) %>% 
+  ggplot()+
+  geom_line(aes(obs,ratio))
+```
+
+
+

@@ -1,0 +1,40 @@
+
+
+```{r package loading, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(baseline)
+library(plotly)
+```
+
+```{r}
+
+map<-read.delim("E:\\Tufts\\data\\Scan_001_Spec.Data 2_F (Sub BG).txt",head=F)
+
+wtno<-as.numeric(map[,1])
+
+```
+
+
+# Plot the selected full spectra of 2D mapping on SERS R6G in substrate
+# calc the variance of the substrate
+```{r}
+map%>% 
+  pivot_longer(cols=c(-1),names_to = c("obs")) %>%
+  mutate(obs=as.numeric((str_replace(obs,"V","")))) %>% 
+  set_names(c("wtno","obs","value"))%>% 
+  filter(obs%in%(80*c(1:20))) %>% 
+  ggplot()+
+  geom_line(aes(wtno,value,group=obs,color=obs))
+#  xlim(700,900)+
+#  ylim(0,25) 
+
+b<-map%>% 
+  pivot_longer(cols=c(-1),names_to = c("obs")) %>%
+  mutate(obs=as.numeric((str_replace(obs,"V","")))) %>% 
+  set_names(c("wtno","obs","value"))%>% 
+  filter((wtno<1512)&(wtno>1511)) %>% 
+  filter(obs<2400) %>% #first 30 lines show good consistancy, 9% variance
+  summarise(mean=mean(value),sd=sd(value),var=sd/mean)
+  
+
+```
