@@ -1,0 +1,99 @@
+
+```{r}
+library("tiff")
+library("tidyverse")
+library("plotly")
+
+```
+
+```{r}
+
+## read in fluorescent image of RB dye peak intensity
+a<-readTIFF("C:\\Users\\heqin\\OneDrive\\Desktop\\Dif Intensity_reversability_Reversability-2%_RAW_ch00-1 (dragged).tiff") %>% 
+  as.data.frame() %>% 
+  setNames(c(1:512)) %>% 
+  mutate(y=c(1:512)) %>% 
+  pivot_longer(cols=c(1:512),names_to = "x",values_to = "int") %>% 
+  mutate(x=as.integer(x))
+
+##  filter the background of fluorescent image of R6G dye peak based on the intensity, save and open outside of Rstudio.
+
+# faster and more won't cause the crush of R
+thresholda<-0.0025  #set threshold, initial 0.002
+imagea<-ifelse(a$int<thresholda,0,a$int)%>%  #replace BG below threshold with 0
+  matrix(ncol=512)/max(a$int) #adjust scale from 0-1 
+
+#writeTIFF(imagea, "C:\\Users\\heqin\\OneDrive\\Desktop\\filtereda.tiff") #save the image
+
+
+## read in fluorescent image of R6G dye peak intensity
+b<-readTIFF("C:\\Users\\heqin\\OneDrive\\Desktop\\Dif Intensity_reversability_Reversability-2%_RAW_ch01-1 (dragged).tiff") %>% 
+  as.data.frame() %>% 
+  setNames(c(1:512)) %>% 
+  mutate(y=c(1:512)) %>% 
+  pivot_longer(cols=c(1:512),names_to = "x",values_to = "int") %>% 
+  mutate(x=as.integer(x))
+
+##  filter the background of fluorescent image of R6G dye peak based on the intensity, save and open outsidemof Rstudio.
+# faster and more won't cause the crush of R
+
+thresholdb<-0.0002 #initial 0.00015
+imageb<-ifelse(b$int<thresholdb,Inf,b$int)%>% 
+  matrix(ncol=512)/max(b$int)
+#writeTIFF(imageb, "C:\\Users\\heqin\\OneDrive\\Desktop\\filteredb.tiff")
+```
+
+
+```{r}
+## calculate the ratio
+image<-a %>% 
+  mutate(int=ifelse(int<thresholda,0,int), 
+#replace BG with 0
+         intb=ifelse(b$int<thresholdb,Inf,b$int)) %>% 
+#replace BG with infinite, so both RB BG and R6G BG area are 0 after the ratio calculated
+  mutate(abratio=int/intb) 
+
+
+sum(is.finite(image$abratio)) #check if there is any infinite number
+
+# adjust range from 0-1 to save as TIFF
+ratio<-image$abratio %>% 
+  matrix(ncol=512)/max(image$abratio) 
+
+## plot peak ratio distribution in histogram and boxplot
+p1<-image %>% 
+  filter(abratio>0) %>% #remove BG that = 0
+  ggplot()+
+  geom_histogram(aes(abratio),binwidth = 0.5)
+
+p2<-image %>% 
+  filter(abratio>0) %>% 
+  ggplot()+
+  geom_boxplot(aes(abratio)) 
+
+cowplot::plot_grid(p1, p2, 
+                   ncol = 1, rel_heights = c(2, 1),
+                   align = 'v', axis = 'lr') 
+
+## calculate mean and standard dev of ratio
+r<-image %>% 
+  filter(abratio>0) %>% 
+  summarise(mean=mean(abratio),sd=sd(abratio))
+
+## stat
+# only BG in RG image
+image %>% filter((int==0)&(is.finite(intb)==TRUE)) %>% 
+  nrow()
+# only BG in R6G image
+image %>% filter((int!=0)&(is.infinite(intb)==TRUE)) %>% 
+  nrow()
+# BG in both images
+image %>% filter((int==0)&(is.infinite(intb)==TRUE)) %>% 
+  nrow()
+# particles in both images
+image %>% filter((int!=0)&(is.finite(intb)==TRUE)) %>% 
+  nrow()
+
+writeTIFF(ratio, "C:\\Users\\heqin\\OneDrive\\Desktop\\ratio.tiff")
+
+```
